@@ -2,7 +2,7 @@ import lldb
 import json
 
 def __lldb_init_module(debugger, internal_dict):
-    debugger.HandleCommand('command script add -f xpc.set_xpc_breakpoints snif')
+    debugger.HandleCommand('command script add -f snif.set_xpc_breakpoints snif')
     print("XPC Tracker plugin loaded. Use 'snif' to set breakpoints on XPC functions.")
 
 def send_callback(frame, bp_loc, internal_dict):
@@ -76,7 +76,7 @@ def set_xpc_breakpoints(debugger, command, result, internal_dict):
     target = debugger.GetSelectedTarget()
     for func in xpc_send_functions:
         breakpoint = target.BreakpointCreateByName(func)
-        breakpoint.SetScriptCallbackFunction('xpc.send_callback')
+        breakpoint.SetScriptCallbackFunction('snif.send_callback')
         breakpoint.SetOneShot(False)
         breakpoint.SetAutoContinue(True) 
         print(f"Set breakpoint on: {func}")
@@ -89,7 +89,7 @@ def set_xpc_breakpoints(debugger, command, result, internal_dict):
     ]
     for func in xpc_recv_functions:
         breakpoint = target.BreakpointCreateByName(func)
-        breakpoint.SetScriptCallbackFunction('xpc.recv_callback')
+        breakpoint.SetScriptCallbackFunction('snif.recv_callback')
         breakpoint.SetOneShot(False)
         breakpoint.SetAutoContinue(True)
         print(f"Set breakpoint on: {func}")
