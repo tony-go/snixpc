@@ -101,14 +101,15 @@ def serialize_xpc_message(frame, xpc_obj):
         return {"type": type_name, "description": "Unknown type"}
 
 def send_callback(frame, bp_loc, internal_dict):
-    function_name = frame.GetFunctionName()
+    xpc_func = frame.GetFunctionName()
     
     conn = frame.FindRegister("x0").GetValue()
     msg = frame.FindRegister("x1").GetValue()
 
     # Get connection name
     xpc_connection_get_name_expr = f'(const char *)xpc_connection_get_name((void *){conn})'
-    service = frame.EvaluateExpression(xpc_connection_get_name_expr).GetSummary()
+    connection_name = frame.EvaluateExpression(xpc_connection_get_name_expr).GetSummary()
+    connection_name = connection_name.strip('"').replace('\\"', '"')
 
     # Get connection pid
     xpc_connection_get_pid_expr = f'(int)xpc_connection_get_pid((void *){conn})'
@@ -118,8 +119,8 @@ def send_callback(frame, bp_loc, internal_dict):
 
     # print json object with all details
     xpc_data = {
-        "xpc_function": function_name,
-        "connection_name": service,
+        "xpc_function": xpc_func,
+        "connection_name": connection_name,
         "connection_pid": conn_pid,
         "message": message,
         "direction": "send"
