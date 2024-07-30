@@ -14,7 +14,7 @@ def execute_command(command):
     else:
         return result.GetError()
 
-def serialize_xpc_dictionary(frame, xpc_dict):
+def serialize_xpc_message(frame, xpc_dict):
     
     objc_code = f'''
     @import Foundation;
@@ -85,22 +85,7 @@ def serialize_xpc_dictionary(frame, xpc_dict):
     except json.JSONDecodeError as e:
         return {error: "Failed to parse JSON"}
 
-def serialize_xpc_message(frame, xpc_obj):
-    # Get Type address
-    type_addr = frame.EvaluateExpression(f'(const char*) xpc_get_type((void*) {xpc_obj})').GetValue()
-
-    if not type_addr:
-        return {"type": "Unknown", "description": "Failed to get type address"}
-
-    # Use po to get the type name
-    type_name = execute_command(f'po {type_addr}')
-
-    if "OS_xpc_dictionary" in type_name:
-        return serialize_xpc_dictionary(frame, xpc_obj)
-    else:
-        return {"type": type_name, "description": "Unknown type"}
-
-def send_callback(frame, bp_loc, internal_dict):
+def capture_xpc_event(frame, direction):
     xpc_func = frame.GetFunctionName()
     
     conn = frame.FindRegister("x0").GetValue()
@@ -109,7 +94,8 @@ def send_callback(frame, bp_loc, internal_dict):
     # Get connection name
     xpc_connection_get_name_expr = f'(const char *)xpc_connection_get_name((void *){conn})'
     connection_name = frame.EvaluateExpression(xpc_connection_get_name_expr).GetSummary()
-    connection_name = connection_name.strip('"').replace('\\"', '"')
+    if connection_name:
+        connection_name = connection_name.strip('"').replace('\\"', '"')
 
     # Get connection pid
     xpc_connection_get_pid_expr = f'(int)xpc_connection_get_pid((void *){conn})'
@@ -123,40 +109,21 @@ def send_callback(frame, bp_loc, internal_dict):
         "connection_name": connection_name,
         "connection_pid": conn_pid,
         "message": message,
-        "direction": "send"
+        "direction": direction,
     }
 
-    print(json.dumps(xpc_data, indent=4))
+    return json.dumps(xpc_data, indent=4)
     
-    return True
+
+def send_callback(frame, bp_loc, internal_dict):
+    xpc_event = capture_xpc_event(frame, "send")
+    print(xpc_event)
+
+    return False
 
 def recv_callback(frame, bp_loc, internal_dict):
-    function_name = frame.GetFunctionName()
-
-    conn = frame.FindRegister("x0").GetValue()
-    msg = frame.FindRegister("x1").GetValue()
-
-    # Get connection name
-    xpc_connection_get_name_expr = f'(const char *)xpc_connection_get_name((void *){conn})'
-    service = frame.EvaluateExpression(xpc_connection_get_name_expr).GetSummary()
-
-    # Get connection pid
-    xpc_connection_get_pid_expr = f'(int)xpc_connection_get_pid((void *){conn})'
-    conn_pid = frame.EvaluateExpression(xpc_connection_get_pid_expr).GetValue()
-
-    # Get message
-    message = frame.EvaluateExpression(f'(const char*) xpc_copy_description((void*) {msg})').GetSummary()
-
-    # print json object with all details
-    xpc_data = {
-        "xpc_function": function_name,
-        "connection_name": service,
-        "connection_pid": conn_pid,
-        "message": message,
-        "direction": "receive"
-    }
-
-    print(json.dumps(xpc_data, indent=4))
+    xpc_event = capture_xpc_event(frame, "recv")
+    print(xpc_event)
 
     return False
 
