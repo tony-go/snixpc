@@ -87,29 +87,48 @@ def serialize_xpc_message(frame, xpc_dict):
 
 def capture_xpc_event(frame, direction):
     xpc_func = frame.GetFunctionName()
-    
     conn = frame.FindRegister("x0").GetValue()
     msg = frame.FindRegister("x1").GetValue()
 
     # Get connection name
-    xpc_connection_get_name_expr = f'(const char *)xpc_connection_get_name((void *){conn})'
-    connection_name = frame.EvaluateExpression(xpc_connection_get_name_expr).GetSummary()
+    get_connection_name_expr = f'''
+    @import Foundation;
+    typedef NSObject<OS_xpc_object> * xpc_connection_t;
+    extern const char * xpc_connection_get_name(xpc_connection_t connection);
+
+    xpc_connection_t conn = (xpc_connection_t){conn};
+    const char *name = xpc_connection_get_name(conn);
+    name ? [NSString stringWithUTF8String:name] : @"<null>";
+    '''
+    connection_name = execute_command(f'expr -l objc -O -- {get_connection_name_expr}')
     if connection_name:
         connection_name = connection_name.strip('"').replace('\\"', '"')
 
     # Get connection pid
-    xpc_connection_get_pid_expr = f'(int)xpc_connection_get_pid((void *){conn})'
-    conn_pid = frame.EvaluateExpression(xpc_connection_get_pid_expr).GetValue()
+    get_connection_pid_expr = f'''
+    @import Foundation;
+    typedef NSObject<OS_xpc_object> * xpc_connection_t;
+    extern pid_t xpc_connection_get_pid(xpc_connection_t connection);
 
+    xpc_connection_t conn = (xpc_connection_t){conn};
+    (int)xpc_connection_get_pid(conn);
+    '''
+    connection_pid = execute_command(f'expr -l objc -O -- {get_connection_pid_expr}')
+
+    # Serialize the XPC message
     message = serialize_xpc_message(frame, msg)
 
     # print json object with all details
     xpc_data = {
         "xpc_function": xpc_func,
         "connection_name": connection_name,
-        "connection_pid": conn_pid,
+        "connection_pid": connection_pid,
         "message": message,
         "direction": direction,
+        # "debug_info": {
+        #     "connection_address": conn,
+        #     "message_address": msg,
+        # }
     }
 
     return json.dumps(xpc_data, indent=4)
