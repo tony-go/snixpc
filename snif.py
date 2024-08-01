@@ -34,6 +34,7 @@ def serialize_xpc_message(frame, xpc_dict):
     extern const void *xpc_data_get_bytes_ptr(xpc_object_t xdata);
     extern size_t xpc_data_get_length(xpc_object_t xdata);
     extern bool xpc_dictionary_apply(xpc_object_t xdict, bool (^applier)(const char *key, xpc_object_t value));
+    extern const char *xpc_copy_description(xpc_object_t object);
     
     extern const struct _xpc_type_s _xpc_type_string;
     extern const struct _xpc_type_s _xpc_type_int64;
@@ -50,7 +51,8 @@ def serialize_xpc_message(frame, xpc_dict):
     #define XPC_TYPE_DOUBLE (&_xpc_type_double)
     #define XPC_TYPE_DATA (&_xpc_type_data)
     #define XPC_TYPE_ARRAY (&_xpc_type_array)
-   
+
+    // TODO: we should handle the case where the root type is not a dictionary
     id (^serialize_xpc_message)(xpc_object_t) = ^id(xpc_object_t xpc_obj) {{
         NSMutableDictionary *result = [NSMutableDictionary dictionary];
         xpc_dictionary_apply((xpc_object_t)xpc_obj, ^bool(const char *key, xpc_object_t value) {{
@@ -71,9 +73,9 @@ def serialize_xpc_message(frame, xpc_dict):
                 NSData *data = [NSData dataWithBytes:xpc_data_get_bytes_ptr(value) length:xpc_data_get_length(value)];
                 result[keyStr] = [data base64EncodedStringWithOptions:0];
             }} else if (type == XPC_TYPE_ARRAY) {{
-                NSMutableArray *array = [NSMutableArray array];
-                [array addObject:@"lol"];
-                result[keyStr] = array;
+                // TODO: Implement array serialization
+                // Find a way to call recursively serialize_xpc_message with value
+                result[keyStr] = @(xpc_copy_description(value));
             }} else {{
                 result[keyStr] = @"Unknown type";
             }}
@@ -101,7 +103,6 @@ def serialize_xpc_message(frame, xpc_dict):
         return {"error": {"message": str(e), "data": result}}
 
 def capture_xpc_event(frame, direction):
-    lock.acquire()
 
     xpc_func = frame.GetFunctionName()
     conn = frame.FindRegister("x0").GetValue()
@@ -144,27 +145,29 @@ def capture_xpc_event(frame, direction):
         "direction": direction,
     }
 
-    lock.release()
-
     return json.dumps(xpc_data, indent=4)
     
 
 def send_callback(frame, bp_loc, internal_dict):
+    lock.acquire()
     process = frame.GetThread().GetProcess()
 
     xpc_event = capture_xpc_event(frame, "send")
     process.Continue()
 
     print(xpc_event)
+    lock.release()
     return False
 
 def recv_callback(frame, bp_loc, internal_dict):
+    lock.acquire()
     process = frame.GetThread().GetProcess()
 
     xpc_event = capture_xpc_event(frame, "recv")
     process.Continue()
 
     print(xpc_event)
+    locl.release()
     return False
 
 def set_xpc_breakpoints(debugger, command, result, internal_dict):
