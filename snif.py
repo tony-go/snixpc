@@ -1,5 +1,8 @@
 import lldb
 import json
+import threading
+
+lock = threading.Lock()
 
 def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand('command script add -f snif.set_xpc_breakpoints snif')
@@ -83,9 +86,11 @@ def serialize_xpc_message(frame, xpc_dict):
         json_obj = json.loads(result)
         return json_obj
     except json.JSONDecodeError as e:
-        return {error: "Failed to parse JSON"}
+        return {"error": {"message": str(e), "data": result}}
 
 def capture_xpc_event(frame, direction):
+    lock.acquire()
+
     xpc_func = frame.GetFunctionName()
     conn = frame.FindRegister("x0").GetValue()
     msg = frame.FindRegister("x1").GetValue()
@@ -125,45 +130,45 @@ def capture_xpc_event(frame, direction):
         "connection_pid": connection_pid,
         "message": message,
         "direction": direction,
-        # "debug_info": {
-        #     "connection_address": conn,
-        #     "message_address": msg,
-        # }
     }
+
+    lock.release()
 
     return json.dumps(xpc_data, indent=4)
     
 
 def send_callback(frame, bp_loc, internal_dict):
-    xpc_event = capture_xpc_event(frame, "send")
-    print(xpc_event)
+    process = frame.GetThread().GetProcess()
 
+    xpc_event = capture_xpc_event(frame, "send")
+    process.Continue()
+
+    print(xpc_event)
     return False
 
 def recv_callback(frame, bp_loc, internal_dict):
-    xpc_event = capture_xpc_event(frame, "recv")
-    print(xpc_event)
+    process = frame.GetThread().GetProcess()
 
+    xpc_event = capture_xpc_event(frame, "recv")
+    process.Continue()
+
+    print(xpc_event)
     return False
 
 def set_xpc_breakpoints(debugger, command, result, internal_dict):
-    # List of XPC functions that send messages
+    target = debugger.GetSelectedTarget()
+
     xpc_send_functions = [
         'xpc_connection_send_message',
         'xpc_connection_send_message_with_reply',
         'xpc_connection_send_message_with_reply_sync',
     ]
-    
-    target = debugger.GetSelectedTarget()
     for func in xpc_send_functions:
         breakpoint = target.BreakpointCreateByName(func)
         breakpoint.SetScriptCallbackFunction('snif.send_callback')
-        # breakpoint.SetOneShot(False)
-        # breakpoint.SetAutoContinue(True) 
+        breakpoint.SetAutoContinue(False)
         print(f"Set breakpoint on: {func}")
 
-
-    # Set breakpoints on XPC functions that receive messages
     xpc_recv_functions = [
         'xpc_connection_set_event_handler',
         'xpc_connection_set_event_handler_with_flags',
@@ -171,8 +176,7 @@ def set_xpc_breakpoints(debugger, command, result, internal_dict):
     for func in xpc_recv_functions:
         breakpoint = target.BreakpointCreateByName(func)
         breakpoint.SetScriptCallbackFunction('snif.recv_callback')
-        breakpoint.SetOneShot(False)
-        breakpoint.SetAutoContinue(True)
+        breakpoint.SetAutoContinue(False)
         print(f"Set breakpoint on: {func}")
 
     result.PutCString("Breakpoints set on XPC functions.")
