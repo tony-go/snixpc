@@ -1,3 +1,7 @@
+# AGPL License
+
+# Copyright (c) 2024 Tony Gorez
+
 import lldb
 import json
 import threading
