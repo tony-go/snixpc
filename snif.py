@@ -41,6 +41,7 @@ def serialize_xpc_message(frame, xpc_dict):
     extern const struct _xpc_type_s _xpc_type_bool;
     extern const struct _xpc_type_s _xpc_type_double;
     extern const struct _xpc_type_s _xpc_type_data;
+    extern const struct _xpc_type_s _xpc_type_array;
     
     #define XPC_TYPE_STRING (&_xpc_type_string)
     #define XPC_TYPE_INT64 (&_xpc_type_int64)
@@ -48,6 +49,7 @@ def serialize_xpc_message(frame, xpc_dict):
     #define XPC_TYPE_BOOL (&_xpc_type_bool)
     #define XPC_TYPE_DOUBLE (&_xpc_type_double)
     #define XPC_TYPE_DATA (&_xpc_type_data)
+    #define XPC_TYPE_ARRAY (&_xpc_type_array)
    
     id (^serialize_xpc_message)(xpc_object_t) = ^id(xpc_object_t xpc_obj) {{
         NSMutableDictionary *result = [NSMutableDictionary dictionary];
@@ -68,6 +70,10 @@ def serialize_xpc_message(frame, xpc_dict):
             }} else if (type == XPC_TYPE_DATA) {{
                 NSData *data = [NSData dataWithBytes:xpc_data_get_bytes_ptr(value) length:xpc_data_get_length(value)];
                 result[keyStr] = [data base64EncodedStringWithOptions:0];
+            }} else if (type == XPC_TYPE_ARRAY) {{
+                NSMutableArray *array = [NSMutableArray array];
+                [array addObject:@"lol"];
+                result[keyStr] = array;
             }} else {{
                 result[keyStr] = @"Unknown type";
             }}
