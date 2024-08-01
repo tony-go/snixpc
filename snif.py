@@ -48,31 +48,37 @@ def serialize_xpc_message(frame, xpc_dict):
     #define XPC_TYPE_BOOL (&_xpc_type_bool)
     #define XPC_TYPE_DOUBLE (&_xpc_type_double)
     #define XPC_TYPE_DATA (&_xpc_type_data)
-    
-    NSMutableDictionary *result = [NSMutableDictionary dictionary];
-    xpc_dictionary_apply((xpc_object_t){xpc_dict}, ^bool(const char *key, xpc_object_t value) {{
-        NSString *keyStr = [NSString stringWithCString:key encoding:NSUTF8StringEncoding];
-        xpc_type_t type = xpc_get_type(value);
-        
-        if (type == XPC_TYPE_STRING) {{
-            result[keyStr] = [NSString stringWithCString:xpc_string_get_string_ptr(value) encoding:NSUTF8StringEncoding];
-        }} else if (type == XPC_TYPE_INT64) {{
-            result[keyStr] = @(xpc_int64_get_value(value));
-        }} else if (type == XPC_TYPE_UINT64) {{
-            result[keyStr] = @(xpc_uint64_get_value(value));
-        }} else if (type == XPC_TYPE_BOOL) {{
-            result[keyStr] = @(xpc_bool_get_value(value));
-        }} else if (type == XPC_TYPE_DOUBLE) {{
-            result[keyStr] = @(xpc_double_get_value(value));
-        }} else if (type == XPC_TYPE_DATA) {{
-            NSData *data = [NSData dataWithBytes:xpc_data_get_bytes_ptr(value) length:xpc_data_get_length(value)];
-            result[keyStr] = [data base64EncodedStringWithOptions:0];
-        }} else {{
-            result[keyStr] = @"Unknown type";
-        }}
-        
-        return true;
-    }});
+   
+    id (^serialize_xpc_message)(xpc_object_t) = ^id(xpc_object_t xpc_obj) {{
+        NSMutableDictionary *result = [NSMutableDictionary dictionary];
+        xpc_dictionary_apply((xpc_object_t)xpc_obj, ^bool(const char *key, xpc_object_t value) {{
+            NSString *keyStr = [NSString stringWithCString:key encoding:NSUTF8StringEncoding];
+            xpc_type_t type = xpc_get_type(value);
+            
+            if (type == XPC_TYPE_STRING) {{
+                result[keyStr] = [NSString stringWithCString:xpc_string_get_string_ptr(value) encoding:NSUTF8StringEncoding];
+            }} else if (type == XPC_TYPE_INT64) {{
+                result[keyStr] = @(xpc_int64_get_value(value));
+            }} else if (type == XPC_TYPE_UINT64) {{
+                result[keyStr] = @(xpc_uint64_get_value(value));
+            }} else if (type == XPC_TYPE_BOOL) {{
+                result[keyStr] = @(xpc_bool_get_value(value));
+            }} else if (type == XPC_TYPE_DOUBLE) {{
+                result[keyStr] = @(xpc_double_get_value(value));
+            }} else if (type == XPC_TYPE_DATA) {{
+                NSData *data = [NSData dataWithBytes:xpc_data_get_bytes_ptr(value) length:xpc_data_get_length(value)];
+                result[keyStr] = [data base64EncodedStringWithOptions:0];
+            }} else {{
+                result[keyStr] = @"Unknown type";
+            }}
+            
+            return true;
+        }});
+
+        return result;
+    }};
+
+    id result = serialize_xpc_message(xpc_object_t({xpc_dict}));
 
     NSError *error = nil;
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:result options:NSJSONWritingPrettyPrinted error:&error];
