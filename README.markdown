@@ -1,11 +1,11 @@
-> ⚠️: This lldb plugin is under development, there is a few bugs to fix :)
+> ⚠️: This lldb plugin is under development, there are a few bugs to fix :)
 
 > 👉: Share your feedback [in this issue](https://github.com/tony-go/snixpc/issues/2).
 
 <h1 align="center">snixpc</h1>
 <h3 align="center">Inspect xpc messages of your favorite binary</h3>
 
-`snixpc` is an LLDB plugin designed to capture and polish XPC messages: It allows developers 
+`snixpc` is an LLDB plugin designed to capture and polish XPC messages. It allows developers
 and security researchers to easily intercept and examine XPC communications.
 
 ## Example
@@ -43,8 +43,8 @@ Process 1234 resuming
 ### Roadmap
 
 - Make this version stable
-- Add a `--output/-o` flag to write serialized message to file
-- Add a `unsnif` command to stop XPC sniffin'
+- Add a `--output/-o` flag to write serialized messages to file
+- Add a `unsnif` command to stop XPC "sniffing"
 - Wrap this plugin into an executable
 
 > 🤙 Stay tuned as we continue to expand our feature set.
@@ -75,8 +75,13 @@ Process 1234 resuming
 
 ## Bugs / Limitations
 
-- We did not serialize properly `XPC_TYPE_ARRAY`
-- The plugin is not resilient when 
+- We don't serialize properly `XPC_TYPE_ARRAY`
+- The plugin is not resilient when there is a lot of messages
+  - This warning appears:
+    ```
+    warning: hit breakpoint while running function, skipping commands and conditions to prevent recursion
+    ```
+  - It is very difficult to stop the execution when there are a lot of messages
 
 ## Dependencies
 
