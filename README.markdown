@@ -43,7 +43,7 @@ Process 1234 resuming
 ### Roadmap
 
 - Make this version stable
-- Add a `--output/-o` flag to write serialized message to file
+- Add a `--output/-o` flag to write serialized messages to file
 - Add a `unsnif` command to stop XPC sniffin'
 - Wrap this plugin into an executable
 
@@ -76,7 +76,12 @@ Process 1234 resuming
 ## Bugs / Limitations
 
 - We did not serialize properly `XPC_TYPE_ARRAY`
-- The plugin is not resilient when 
+- The plugin is not resilient when there is a lot of messages
+  - This warning appear:
+    ```
+    warning: hit breakpoint while running function, skipping commands and conditions to prevent recursion
+    ```
+  - It is very difficult to stop the execution when there is a lot of message
 
 ## Dependencies
 
