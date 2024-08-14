@@ -171,7 +171,7 @@ def recv_callback(frame, bp_loc, internal_dict):
     process.Continue()
 
     print(xpc_event)
-    locl.release()
+    lock.release()
     return False
 
 def set_xpc_breakpoints(debugger, command, result, internal_dict):
