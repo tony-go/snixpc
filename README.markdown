@@ -1,4 +1,4 @@
-> ⚠️: This lldb plugin is under development, there are a few bugs to fix :)
+> ⚠️: This lldb plugin is under development.
 
 > 👉: Share your feedback [in this issue](https://github.com/tony-go/snixpc/issues/2).
 
@@ -13,37 +13,42 @@ and security researchers to easily intercept and examine XPC communications.
 ```text
 (lldb) command script import /path/to/snif.py
 (lldb) snif
-XPC Tracker plugin loaded. Use 'snif' to set breakpoints on XPC functions.
-...
+Set breakpoint on: xpc_connection_send_message
+Set breakpoint on: xpc_connection_send_message_with_reply
+Set breakpoint on: xpc_connection_send_message_with_reply_sync
+Set breakpoint on: xpc_connection_set_event_handler
+Set breakpoint on: xpc_connection_set_event_handler_with_flags
 Breakpoints set on XPC functions.
 (lldb) c
-Process 1234 resuming
-...
-{
-    "xpc_function": "xpc_connection_send_message",
-    "connection_name": "com.apple.example.service",
-    "connection_pid": "5678",
-    "message": {
-        "command": "fetch_data",
-        "parameters": {
-            "id": 12345,
-            "type": "user_info"
-        }
-    },
-    "direction": "send"
-}
+Process 52098 resuming
+(lldb) ======================================
+XPC Function: xpc_connection_send_message
+Direction: SEND
+Thread: 0xede788
+Connection: "<connection: 0x600002d90000> { name = com.apple.distributed_notifications@Uv3, listener = false, pid = 1476, euid = 501, egid = 20, asid = 100033 }"
+Message: "<dictionary: 0x600003688fc0> { count = 5, transaction: 0, voucher = 0x0, contents =
+    "options" => <uint64: 0x8fa5d5b4a0f1ce8f>: 1
+    "object" => <string: 0x600001c9afa0> { length = 24, contents = "kCFNotificationAnyObject" }
+    "name" => <string: 0x600001c9b030> { length = 49, contents = "com.apple.HIToolbox.beginMenuTrackingNotification" }
+    "method" => <string: 0x600001c9bb10> { length = 4, contents = "post" }
+    "version" => <uint64: 0x8fa5d5b4a0f1ce8f>: 1
+}"
 ```
 
 ## Features
 
 - Set breakpoints on XPC send and receive functions
-- Capture and serialize XPC message content
-- Display connection information (name and PID)
+- Display
+  - XPC connection
+  - XPC message
+  - Direction
+  - XPC function
+  - Thread id
 
 ### Roadmap
 
-- Make this version stable
-- Add a `--output/-o` flag to write serialized messages to file
+- Add a `--output/-o` flag to write messages to file
+- Add a `--format/-f` flag to serialize to json (only with `-o` flag)
 - Add a `unsnif` command to stop XPC "sniffing"
 - Wrap this plugin into an executable
 
@@ -58,30 +63,6 @@ Process 1234 resuming
 | xpc_connection_send_message_with_reply_sync | ✅ Supported |
 | xpc_connection_set_event_handler            | ✅ Supported |
 | xpc_connection_set_event_handler_with_flags | ✅ Supported |
-
-### Types
-
-| XPC Type            | Support          |
-|---------------------|------------------|
-| XPC_TYPE_STRING     | ✅ Supported     |
-| XPC_TYPE_INT64      | ✅ Supported     |
-| XPC_TYPE_UINT64     | ✅ Supported     |
-| XPC_TYPE_BOOL       | ✅ Supported     |
-| XPC_TYPE_DOUBLE     | ✅ Supported     |
-| XPC_TYPE_DATA       | ✅ Supported     |
-| XPC_TYPE_ARRAY      | ❌ Not Supported |
-| XPC_TYPE_DICTIONARY | ✅ Supported     |
-
-
-## Bugs / Limitations
-
-- We don't serialize properly `XPC_TYPE_ARRAY`
-- The plugin is not resilient when there is a lot of messages
-  - This warning appears:
-    ```
-    warning: hit breakpoint while running function, skipping commands and conditions to prevent recursion
-    ```
-  - It is very difficult to stop the execution when there are a lot of messages
 
 ## Dependencies
 
